@@ -10,3 +10,145 @@ generator client {
 datasource db {
   provider = "mysql"
 }
+
+model users {
+  id            Int         @id @default(autoincrement())
+  nama          String
+  username      String      @unique
+  password_hash String
+  role          String
+  aktif         Boolean     @default(true)
+  penjualan     penjualan[]
+  pembelian     pembelian[]
+}
+
+model supplier {
+  id        Int         @id @default(autoincrement())
+  nama      String
+  kontak    String
+  alamat    String
+  produk    produk[]
+  pembelian pembelian[]
+}
+
+model produk {
+  id               Int                @id @default(autoincrement())
+  kode             String             @unique
+  nama             String
+  kategori         String
+  satuan           String
+  harga_beli       Int
+  harga_jual       Int
+  stok             Int                @default(0)
+  stok_minimum     Int
+  lead_time_hari   Int
+  supplier_id      Int
+  supplier         supplier           @relation(fields: [supplier_id], references: [id])
+  detail_penjualan detail_penjualan[]
+  detail_pembelian detail_pembelian[]
+  hasil_prediksi   hasil_prediksi[]
+  evaluasi_model   evaluasi_model[]
+  rekomendasi      rekomendasi[]
+  notifikasi       notifikasi[]
+}
+
+model penjualan {
+  id      Int                @id @default(autoincrement())
+  tanggal DateTime
+  user_id Int
+  total   Int
+  user    users              @relation(fields: [user_id], references: [id])
+  detail  detail_penjualan[]
+}
+
+model detail_penjualan {
+  id           Int       @id @default(autoincrement())
+  penjualan_id Int
+  produk_id    Int
+  qty          Int
+  harga        Int
+  subtotal     Int
+  penjualan    penjualan @relation(fields: [penjualan_id], references: [id])
+  produk       produk    @relation(fields: [produk_id], references: [id])
+}
+
+model pembelian {
+  id          Int                @id @default(autoincrement())
+  tanggal     DateTime
+  supplier_id Int
+  user_id     Int
+  total       Int
+  supplier    supplier           @relation(fields: [supplier_id], references: [id])
+  user        users              @relation(fields: [user_id], references: [id])
+  detail      detail_pembelian[]
+}
+
+model detail_pembelian {
+  id           Int       @id @default(autoincrement())
+  pembelian_id Int
+  produk_id    Int
+  qty          Int
+  harga        Int
+  subtotal     Int
+  pembelian    pembelian @relation(fields: [pembelian_id], references: [id])
+  produk       produk    @relation(fields: [produk_id], references: [id])
+}
+
+model job_prediksi {
+  id             Int              @id @default(autoincrement())
+  pemicu         String
+  status         String
+  mulai          DateTime         @default(now())
+  selesai        DateTime?
+  pesan_error    String?
+  hasil_prediksi hasil_prediksi[]
+  evaluasi_model evaluasi_model[]
+  rekomendasi    rekomendasi[]
+}
+
+model hasil_prediksi {
+  id               Int          @id @default(autoincrement())
+  job_id           Int
+  produk_id        Int
+  tanggal_prediksi DateTime
+  qty_prediksi     Float
+  model            String
+  job              job_prediksi @relation(fields: [job_id], references: [id])
+  produk           produk       @relation(fields: [produk_id], references: [id])
+}
+
+model evaluasi_model {
+  id        Int          @id @default(autoincrement())
+  job_id    Int
+  produk_id Int
+  model     String
+  mape      Float
+  rmse      Float
+  mae       Float
+  terpilih  Boolean      @default(false)
+  job       job_prediksi @relation(fields: [job_id], references: [id])
+  produk    produk       @relation(fields: [produk_id], references: [id])
+}
+
+model rekomendasi {
+  id            Int          @id @default(autoincrement())
+  job_id        Int
+  produk_id     Int
+  safety_stock  Int
+  reorder_point Int
+  qty_saran     Int
+  tanggal_pesan DateTime
+  status        String       @default("baru")
+  job           job_prediksi @relation(fields: [job_id], references: [id])
+  produk        produk       @relation(fields: [produk_id], references: [id])
+}
+
+model notifikasi {
+  id        Int      @id @default(autoincrement())
+  jenis     String
+  produk_id Int
+  pesan     String
+  dibaca    Boolean  @default(false)
+  waktu     DateTime @default(now())
+  produk    produk   @relation(fields: [produk_id], references: [id])
+}
