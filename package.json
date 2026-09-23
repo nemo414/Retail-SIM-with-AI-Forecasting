@@ -1,0 +1,24 @@
+{
+  "name": "retail-sim-with-ai-forecasting",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akira4n/Retail-SIM-with-AI-Forecasting.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/akira4n/Retail-SIM-with-AI-Forecasting/issues"
+  },
+  "homepage": "https://github.com/akira4n/Retail-SIM-with-AI-Forecasting#readme",
+  "dependencies": {
+    "csv-parse": "^7.0.2"
+  }
+}
