@@ -6,6 +6,60 @@ import numpy as np
 import xgboost as xgb
 from sqlalchemy import create_engine, text
 from datetime import timedelta
+from statsmodels.tsa.api import ExponentialSmoothing
+
+
+def calculate_metrics(actual, predicted):
+    actual = np.asarray(actual, dtype=float)
+    predicted = np.asarray(predicted, dtype=float)
+    error = actual - predicted
+    positive = actual > 0
+    return {
+        'mape': float(np.mean(np.abs(error[positive] / actual[positive])) * 100)
+        if np.any(positive) else 0.0,
+        'rmse': float(np.sqrt(np.mean(error ** 2))),
+        'mae': float(np.mean(np.abs(error))),
+    }
+
+
+def evaluate_models(df, df_clean, features, model_params):
+    train = df_clean[df_clean['tanggal'] <= '2026-06-30']
+    test = df_clean[
+        (df_clean['tanggal'] >= '2026-07-01')
+        & (df_clean['tanggal'] <= '2026-08-31')
+    ]
+    evaluation_model = xgb.XGBRegressor(**model_params)
+    evaluation_model.fit(train[features], train['qty'])
+    xgb_predictions = np.maximum(0, evaluation_model.predict(test[features]))
+    test = test.copy()
+    test['xgb_prediction'] = xgb_predictions
+    results = []
+
+    for pid in sorted(test['produk_id'].unique()):
+        test_product = test[test['produk_id'] == pid]
+        actual = test_product['qty'].to_numpy()
+        xgb_product = test_product['xgb_prediction'].to_numpy()
+        xgb_score = calculate_metrics(actual, xgb_product)
+        history = df[
+            (df['produk_id'] == pid) & (df['tanggal'] <= '2026-06-30')
+        ].set_index('tanggal')['qty']
+        try:
+            holt_model = ExponentialSmoothing(
+                history, seasonal='add', seasonal_periods=7
+            ).fit()
+            holt_product = np.maximum(0, holt_model.forecast(len(actual)).to_numpy())
+        except Exception:
+            holt_product = np.repeat(history.tail(7).mean(), len(actual))
+        holt_score = calculate_metrics(actual, holt_product)
+        selected = 'XGBoost' if xgb_score['mae'] <= holt_score['mae'] else 'Holt-Winters'
+        for model_name, score in [('XGBoost', xgb_score), ('Holt-Winters', holt_score)]:
+            results.append({
+                'produk_id': int(pid),
+                'model': model_name,
+                **score,
+                'terpilih': model_name == selected,
+            })
+    return pd.DataFrame(results)
 
 # ==========================================
 # 1. PARSER ARGUMEN CLI (--job <id>)
@@ -41,6 +95,8 @@ try:
                 raise ValueError("CSV harus memiliki kolom 'qty' atau 'total_qty'.")
         if not {'tanggal', 'produk_id'}.issubset(df_raw.columns):
             raise ValueError("CSV harus memiliki kolom 'tanggal' dan 'produk_id'.")
+        stok_produk = {int(pid): 0 for pid in df_raw['produk_id'].unique()}
+        lead_time_produk = {int(pid): 3 for pid in df_raw['produk_id'].unique()}
     else:
         engine = create_engine(DATABASE_URL)
 
@@ -59,6 +115,11 @@ try:
             ORDER BY tanggal ASC
         """
         df_raw = pd.read_sql(query, con=engine)
+        produk_info = pd.read_sql(
+            'SELECT id, stok, lead_time_hari FROM produk', con=engine
+        )
+        stok_produk = dict(zip(produk_info['id'], produk_info['stok']))
+        lead_time_produk = dict(zip(produk_info['id'], produk_info['lead_time_hari']))
 
     df_raw['tanggal'] = pd.to_datetime(df_raw['tanggal'])
     
@@ -96,15 +157,18 @@ try:
                 'rolling_mean_7', 'rolling_mean_28']
 
     # Latih Model Global XGBoost
-    model = xgb.XGBRegressor(
-        n_estimators=300,
-        max_depth=4,
-        learning_rate=0.03,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        random_state=42,
-    )
+    model_params = {
+        'n_estimators': 300,
+        'max_depth': 4,
+        'learning_rate': 0.03,
+        'subsample': 0.8,
+        'colsample_bytree': 0.8,
+        'random_state': 42,
+    }
+    model = xgb.XGBRegressor(**model_params)
     model.fit(df_clean[features], df_clean['qty'])
+
+    df_evaluasi = evaluate_models(df, df_clean, features, model_params)
 
     # ==========================================
     # 4. PREDIKSI 14 HARI KE DEPAN & SIMPAN HASIL
@@ -162,21 +226,22 @@ try:
         # Hitung SS & ROP
         std_harian = df_p['qty'].std()
         mean_harian = df_p['qty'].mean()
-        lead_time = 3  # hari
+        lead_time = lead_time_produk.get(int(pid), 3)
         
         ss = int(np.ceil(1.65 * std_harian * np.sqrt(lead_time)))
         rop = int(np.ceil((mean_harian * lead_time) + ss))
         total_pred_14_hari = sum([p['qty_prediksi'] for p in list_hasil_prediksi if p['produk_id'] == pid])
         
-        list_rekomendasi.append({
-            'job_id': job_id,
-            'produk_id': int(pid),
-            'safety_stock': ss,
-            'reorder_point': rop,
-            'qty_saran': int(np.ceil(total_pred_14_hari)),
-            'tanggal_pesan': (tanggal_terakhir + timedelta(days=1)).strftime('%Y-%m-%d'),
-            'status': 'baru'
-        })
+        if stok_produk.get(int(pid), 0) <= rop:
+            list_rekomendasi.append({
+                'job_id': job_id,
+                'produk_id': int(pid),
+                'safety_stock': ss,
+                'reorder_point': rop,
+                'qty_saran': int(np.ceil(total_pred_14_hari)),
+                'tanggal_pesan': (tanggal_terakhir + timedelta(days=1)).strftime('%Y-%m-%d'),
+                'status': 'baru'
+            })
 
     # ==========================================
     # 5. WRITE KE DATABASE & UPDATE STATUS JOB
@@ -188,9 +253,12 @@ try:
         os.makedirs(args.output_dir, exist_ok=True)
         df_hasil.to_csv(os.path.join(args.output_dir, f'hasil_prediksi_job_{job_id}.csv'), index=False)
         df_rekom.to_csv(os.path.join(args.output_dir, f'rekomendasi_job_{job_id}.csv'), index=False)
+        df_evaluasi.to_csv(os.path.join(args.output_dir, f'evaluasi_model_job_{job_id}.csv'), index=False)
     else:
         df_hasil.to_sql('hasil_prediksi', con=engine, if_exists='append', index=False)
         df_rekom.to_sql('rekomendasi', con=engine, if_exists='append', index=False)
+        df_evaluasi.insert(0, 'job_id', job_id)
+        df_evaluasi.to_sql('evaluasi_model', con=engine, if_exists='append', index=False)
 
         # Update job_prediksi -> Selesai
         with engine.begin() as conn:
