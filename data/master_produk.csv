@@ -1,0 +1,21 @@
+produk_id,kode,nama,kategori,satuan,harga_beli,harga_jual,stok_minimum,lead_time_hari,supplier_id
+1,MIE001,Indomie Goreng (karton),Mie Instan,karton,85000,95000,10,2,4
+2,MIE002,Indomie Kuah Soto (karton),Mie Instan,karton,85000,95000,8,2,4
+3,BRS001,Beras Premium 5kg,Bahan Pokok,sak,65000,72000,15,3,3
+4,BRS002,Beras Medium 5kg,Bahan Pokok,sak,55000,62000,10,3,3
+5,MNK001,Minyak Goreng Bimoli 2L,Minyak,botol,32000,36000,20,2,3
+6,MNK002,Minyak Goreng Curah 1L,Minyak,liter,15000,18000,25,2,1
+7,GLA001,Gula Pasir 1kg,Bahan Pokok,kg,14500,17000,20,2,5
+8,TEH001,Teh Botol Sosro 450ml,Minuman,botol,3500,5000,48,1,2
+9,AQA001,Aqua 600ml,Minuman,botol,2800,4000,48,1,2
+10,KPI001,Kopi Kapal Api (sachet),Kopi,sachet,1200,2000,50,2,5
+11,SKM001,Susu Kental Manis Frisian Flag,Susu,kaleng,9500,12000,15,3,2
+12,SBN001,Sabun Lifebuoy (batang),Kebutuhan Harian,pcs,3500,5000,20,3,4
+13,SMI001,Sambal ABC Sachet,Bumbu,sachet,800,1500,60,2,3
+14,TLR001,Telur Ayam,Bahan Pokok,kg,26000,30000,10,1,1
+15,ROK001,Rokok Surya 16,Rokok,bungkus,28000,31000,20,2,4
+16,DET001,Rinso Sachet 40g,Kebutuhan Harian,sachet,1500,2500,40,3,4
+17,RTA001,Roti Tawar Sari Roti,Roti,bungkus,13000,16000,5,1,2
+18,GRM001,Garam Halus 250g,Bumbu,bungkus,2000,3500,15,3,5
+19,MCS001,Mie Sedaap Cup,Mie Instan,pcs,4000,5500,24,2,4
+20,PST001,Pasta Gigi Pepsodent 75g,Kebutuhan Harian,pcs,7500,10000,10,3,4
