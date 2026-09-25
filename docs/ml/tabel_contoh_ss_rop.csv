@@ -1,0 +1,6 @@
+produk_id,rata_rata_harian,std_harian,lead_time_hari,safety_stock,reorder_point
+1,9.27,3.37,3,10,38
+2,5.47,2.23,3,7,24
+3,13.0,3.94,3,12,51
+4,7.17,2.36,3,7,29
+5,10.65,3.04,3,9,41

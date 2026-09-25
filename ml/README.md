@@ -23,11 +23,11 @@ Pipeline Python:
 
 ## Pembagian data eksperimen
 
-| Bagian | Periode |
-|---|---|
-| Train | September 2025 - April 2026 |
-| Validation | Mei 2026 - Juni 2026 |
-| Test | Juli 2026 - Agustus 2026 |
+| Bagian     | Periode                     |
+| ---------- | --------------------------- |
+| Train      | September 2025 - April 2026 |
+| Validation | Mei 2026 - Juni 2026        |
+| Test       | Juli 2026 - Agustus 2026    |
 
 Data test tidak digunakan untuk tuning. MAPE dihitung hanya pada hari dengan penjualan aktual lebih besar dari nol.
 
